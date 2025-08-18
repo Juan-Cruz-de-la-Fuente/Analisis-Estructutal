@@ -1003,6 +1003,7 @@ def visualizar_estructura_moderna(mostrar_deformada=False, factor_escala=10):
                     gl_i, gl_j = nodo_inicio['grados_libertad_globales'], nodo_fin['grados_libertad_globales']
                     u_local = [0, U_global_vec[gl_i[0]-1], U_global_vec[gl_i[1]-1], 0, U_global_vec[gl_j[0]-1], U_global_vec[gl_j[1]-1]]
                 else:
+                    gl_i, gl_j = nodo_inicio['grados_libertad_globales'], nodo_fin['grados_libertad_globales']
                     T = generar_matriz_transformacion_viga_portico(elemento['beta'])
                     U_global_elem = np.array([U_global_vec[i-1] for i in elemento['grados_libertad_global']])
                     u_local = T @ U_global_elem
@@ -1018,23 +1019,25 @@ def visualizar_estructura_moderna(mostrar_deformada=False, factor_escala=10):
                     t_vec = vec_deformed / len_deformed
                     n_vec = np.array([-t_vec[1], t_vec[0]])
                     
-                    x_local = np.linspace(0, elemento['longitud'], 50)
+                    x_local, v_local = hermite_interpolation(
+                        v1=U_global_vec[gl_i[0]-1],
+                        theta1=U_global_vec[gl_i[1]-1],
+                        v2=U_global_vec[gl_j[0]-1],
+                        theta2=U_global_vec[gl_j[1]-1],
+                        L=elemento['longitud'],
+                        num_points=50
+                    )
+
                     baseline_points = p_start_def + np.outer(x_local * (len_deformed / elemento['longitud']), t_vec)
-                    
-                    s = x_local / elemento['longitud']
-                    H2 = (s**3 - 2*s**2 + s) * elemento['longitud']
-                    H4 = (s**3 - s**2) * elemento['longitud']
-                    
-                    # Calcular la deflexión SÓLO por rotación
-                    v_rotational = H2 * theta1_local + H4 * theta2_local
-                    
-                    final_curve_points = baseline_points + np.outer(v_rotational * factor_escala, n_vec)
-                    
-                    ax.plot(final_curve_points[:, 0], final_curve_points[:, 1], color='#000000', linewidth=3, alpha=0.9,
+                    final_curve_points = baseline_points + np.outer(v_local * factor_escala, n_vec)
+
+                    ax.plot(final_curve_points[:, 0], final_curve_points[:, 1],
+                            color='#000000', linewidth=3, alpha=0.9,
                             label='Estructura Deformada' if 'Estructura Deformada' not in ax.get_legend_handles_labels()[1] else "")
+
             
             elif nodo_inicio_def and nodo_fin_def:
-                ax.plot([nodo_inicio_def['x'], nodo_fin_def['y']], [nodo_inicio_def['y'], nodo_fin_def['y']], 
+                ax.plot([nodo_inicio_def['x'], nodo_fin_def['x']], [nodo_inicio_def['y'], nodo_fin_def['y']], 
                         color='#000000', linewidth=3, alpha=0.9,
                         label='Estructura Deformada' if 'Estructura Deformada' not in ax.get_legend_handles_labels()[1] else "")
         else:
